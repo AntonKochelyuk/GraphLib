@@ -1,5 +1,4 @@
-﻿using System;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace Graphs.Abstract
 {
@@ -7,7 +6,8 @@ namespace Graphs.Abstract
 	{
 		string title { get; }
 
-		IDisposable AddGraph(IGraph graph);
+		void AddGraph(IGraph graph);
+		void RemoveGraph(IGraph graph);
 
 		void SetSyncMode(bool syncEnabled);
 		

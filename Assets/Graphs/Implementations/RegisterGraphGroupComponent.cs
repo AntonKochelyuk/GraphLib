@@ -16,8 +16,6 @@ namespace Graphs.Implementations
 		private IGraphsManager m_graphsManager;
 		private GraphGroup m_group;
 
-		private IDisposable m_groupSubscription;
-		
 		private void Start()
 		{
 			m_graphsManager = GraphsManager.instance;
@@ -31,13 +29,13 @@ namespace Graphs.Implementations
 
 		private void OnDestroy()
 		{
-			m_groupSubscription?.Dispose();
+			m_graphsManager.UnregisterGroup(m_group);
 			Destroy(m_group.gameObject);
 		}
 
 		private void RegisterGroup()
 		{
-			m_groupSubscription = m_graphsManager.RegisterGroup(m_group);
+			m_graphsManager.RegisterGroup(m_group);
 		}
 	}
 }

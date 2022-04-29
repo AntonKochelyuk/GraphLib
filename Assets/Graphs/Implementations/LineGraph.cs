@@ -28,6 +28,8 @@ namespace Graphs.Implementations
 		public float minScale => m_minScale;
 		public float maxScale => m_maxScale;
 
+		public bool needsRedraw { get; private set; }
+		
 		public Color graphColor { get; }
 		public string label { get; }
 
@@ -100,46 +102,49 @@ namespace Graphs.Implementations
 
 		public void Populate(Texture2D texture)
 		{
-			for (var i = 0; i < m_values.Count - 1; i++)
+			if (m_values.Count < 2)
 			{
-				var currentValue = ToTexturePosition(m_values[i]);
-				var nextValue = ToTexturePosition(m_values[i + 1]);
+				return;
+			}
 
-				var currentPoint = new Vector2(i, currentValue);
-				var nextPoint = new Vector2(i + 1, nextValue);
+			var previousXPos = m_values.Count - 2;
+			var currentXPos = m_values.Count - 1;
 
-				var delta = nextPoint - currentPoint;
-				var normalizedDelta = delta.normalized;
+			DrawValuesAtTexture(texture, m_values[previousXPos], m_values[currentXPos], currentXPos);
+		}
 
-				var currentPixel = currentPoint;
+		public void Redraw(Texture2D texture)
+		{
+			needsRedraw = false;
+			
+			if (m_values.Count < 2)
+			{
+				return;
+			}
+
+			for (var i = 1; i < m_values.Count; i++)
+			{
+				var previous = m_values[i - 1];
+				var current = m_values[i];
 				
-				if (normalizedDelta.x > normalizedDelta.y)
-				{
-					do
-					{
-						texture.SetPixel((int) currentPixel.x, (int) currentPixel.y, graphColor);
-						currentPixel += normalizedDelta;
-					} while (nextPoint.x - currentPixel.x > 0);
-				}
-				else if(normalizedDelta.y < 0)
-				{
-					do
-					{
-						texture.SetPixel((int) currentPixel.x, (int) currentPixel.y, graphColor);
-						currentPixel += normalizedDelta;
-					} while (nextPoint.y - currentPixel.y < 0);
-				}
-				else
-				{
-					do
-					{
-						texture.SetPixel((int) currentPixel.x, (int) currentPixel.y, graphColor);
-						currentPixel += normalizedDelta;
-					} while (nextPoint.y - currentPixel.y > 0);
-				}
+				DrawValuesAtTexture(texture, previous, current, i);
 			}
 		}
-		
+
+		private void DrawValuesAtTexture(Texture2D texture, float previousVal, float currentVal, int currentX)
+		{
+			var previousValTexturePos = ToTexturePosition(previousVal);
+			var currentValTexturePos = ToTexturePosition(currentVal);
+			
+			var start = Mathf.Min(previousValTexturePos, currentValTexturePos);
+			var end = Mathf.Max(previousValTexturePos, currentValTexturePos);
+			
+			for (var i = start; i <= end; i++)
+			{
+				texture.SetPixel(currentX, i, graphColor);
+			}	
+		}
+
 		public void Pause()
 		{
 			m_paused = true;
@@ -170,20 +175,27 @@ namespace Graphs.Implementations
 		
 		private void TryUpdateRange(float value)
 		{
-			if(!m_autoScale)
+			if (!m_autoScale)
 				return;
 
+			var scaleUpdated = false;
+			
 			if (value > m_maxScale)
 			{
+				scaleUpdated = true;
 				m_maxScale = value;
 			}
 			else if (value < m_minScale)
 			{
+				scaleUpdated = true;
 				m_minScale = value;
 			}
-			
 
-			RecalculateDensity();
+			if (scaleUpdated)
+			{
+				needsRedraw = true;
+				RecalculateDensity();
+			}
 		}
 
 		private void RecalculateDensity()
@@ -195,7 +207,9 @@ namespace Graphs.Implementations
 		private int ToTexturePosition(float value)
 		{
 			var offsetFromMinimum = value - m_minScale;
-			return Mathf.FloorToInt(offsetFromMinimum * m_verticalDensity);
+			var yPos = Mathf.FloorToInt(offsetFromMinimum * m_verticalDensity);
+			
+			return yPos > m_dimensions.y - 1 ? m_dimensions.y - 1 : yPos;
 		}
 	}
 }

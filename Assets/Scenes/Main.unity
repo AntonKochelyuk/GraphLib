@@ -174,7 +174,7 @@ MonoBehaviour:
   m_group: {fileID: 978247049}
   m_graphData:
     color: {r: 0, g: 0.988956, b: 1, a: 1}
-    valuesSetter:
+    valuesProvider:
       m_PersistentCalls:
         m_Calls:
         - m_Target: {fileID: 1481518334}
@@ -192,7 +192,7 @@ MonoBehaviour:
     label: Cos
     scaleMin: -1
     scaleMax: 1
-    autoScale: 0
+    autoScale: 1
 --- !u!1 &498038448
 GameObject:
   m_ObjectHideFlags: 0
@@ -244,7 +244,7 @@ MonoBehaviour:
   m_group: {fileID: 978247049}
   m_graphData:
     color: {r: 1, g: 0.5400758, b: 0, a: 1}
-    valuesSetter:
+    valuesProvider:
       m_PersistentCalls:
         m_Calls:
         - m_Target: {fileID: 1481518334}
@@ -424,6 +424,16 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: -0.000030517578
       objectReference: {fileID: 0}
+    - target: {fileID: 1031763459830533425, guid: a63315f2d9739c847ac4fb81707a7036,
+        type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: -22.85
+      objectReference: {fileID: 0}
+    - target: {fileID: 1031763459830533425, guid: a63315f2d9739c847ac4fb81707a7036,
+        type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: -19.526
+      objectReference: {fileID: 0}
     - target: {fileID: 1658284456710707901, guid: a63315f2d9739c847ac4fb81707a7036,
         type: 3}
       propertyPath: m_SizeDelta.x
@@ -443,6 +453,11 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Name
       value: GraphGroup
+      objectReference: {fileID: 0}
+    - target: {fileID: 2653462501896329864, guid: a63315f2d9739c847ac4fb81707a7036,
+        type: 3}
+      propertyPath: m_capacity
+      value: 512
       objectReference: {fileID: 0}
     - target: {fileID: 2653462501896329865, guid: a63315f2d9739c847ac4fb81707a7036,
         type: 3}
@@ -629,7 +644,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1420130350
 RectTransform:
   m_ObjectHideFlags: 0

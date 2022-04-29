@@ -23,7 +23,7 @@ namespace Graphs.Implementations
 			return new LineGraphBuilder();
 		}
 
-		public static LineGraphBuilder FromGraphData(GraphData data)
+		public static LineGraphBuilder FromGraphData(GraphSettings data)
 		{
 			return LineGraphBuilder.Create()
 								   .WithColor(data.color)

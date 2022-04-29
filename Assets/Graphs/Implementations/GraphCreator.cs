@@ -1,8 +1,6 @@
-﻿using System;
-using Graphs.Abstract;
+﻿using Graphs.Abstract;
 using Graphs.Data;
 using UnityEngine;
-using UnityEngine.Events;
 
 namespace Graphs.Implementations
 {
@@ -12,29 +10,27 @@ namespace Graphs.Implementations
 		private GraphGroup m_group;
 
 		[SerializeField]
-		private GraphData m_graphData;
+		private GraphSettings m_graphData;
 		
 		private float m_value;
 		private IGraph m_graph;
-
-		private IDisposable m_graphSubscription;
 		
 		private void Start()
 		{
 			m_graph = LineGraphBuilder.FromGraphData(m_graphData)
 									  .Build();
 
-			m_graphSubscription = m_group.AddGraph(m_graph);
+			m_group.AddGraph(m_graph);
 		}
 
 		private void OnDestroy()
 		{
-			m_graphSubscription?.Dispose();
+			m_group.RemoveGraph(m_graph);
 		}
 		
 		private void Update()
 		{
-			m_graphData.valuesSetter.Invoke(m_graph);
+			m_graphData.valuesProvider.Invoke(m_graph);
 		}
 	}
 }

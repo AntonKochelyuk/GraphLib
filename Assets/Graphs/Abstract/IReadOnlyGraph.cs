@@ -6,6 +6,8 @@ namespace Graphs.Abstract
 	{
 		event System.Action<float> newValueReceivedEvent;
 
+		bool needsRedraw { get; }
+
 		string label { get; }
 		
 		float minScale { get; }

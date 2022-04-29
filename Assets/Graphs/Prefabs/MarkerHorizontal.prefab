@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 1835747013880740685}
   - component: {fileID: 4900354038667870014}
   m_Layer: 5
-  m_Name: Marker
+  m_Name: MarkerHorizontal
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

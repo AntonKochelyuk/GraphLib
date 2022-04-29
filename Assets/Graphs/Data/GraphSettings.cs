@@ -6,11 +6,11 @@ using UnityEngine.Events;
 namespace Graphs.Data
 {
 	[Serializable]
-	public struct GraphData
+	public struct GraphSettings
 	{
 		public Color color;
 		
-		public UnityEvent<IGraph> valuesSetter;
+		public UnityEvent<IGraph> valuesProvider;
 		
 		public string label;
 		

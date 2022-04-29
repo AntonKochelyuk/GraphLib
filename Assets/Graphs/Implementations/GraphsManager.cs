@@ -71,19 +71,18 @@ namespace Graphs.Implementations
 			return m_groups.TryGetValue(groupName, out var group) ? group : null;
 		}
 
-		public IDisposable RegisterGroup(GraphGroup group)
+		public void RegisterGroup(GraphGroup group)
 		{
 			if (m_groups.ContainsKey(group.title))
 			{
 				Debug.LogError($"Group with name: '{group.title}' already registered, make sure you give unique name for each group");
-				return null;
+				return;
 			}
 			
 			m_groups.Add(group.title, group);
-			return new DisposableAction(() => UnregisterGroup(group));
 		}
 
-		private void UnregisterGroup(GraphGroup group)
+		public void UnregisterGroup(GraphGroup group)
 		{
 			if (!m_groups.ContainsKey(group.title))
 			{

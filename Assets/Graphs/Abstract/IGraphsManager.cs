@@ -11,6 +11,7 @@ namespace Graphs.Abstract
 		GraphGroup GetOrCreateGroup(string name, Transform parent = null);
 		GraphGroup GetGroup(string name);
 
-		IDisposable RegisterGroup(GraphGroup group);
+		void RegisterGroup(GraphGroup group);
+		void UnregisterGroup(GraphGroup group);
 	}
 }

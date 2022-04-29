@@ -17,6 +17,14 @@ namespace Graphs.Implementations
 		private RawImage m_textureTarget;
 		
 		[SerializeField]
+		private TMP_Text m_title;
+
+		[SerializeField]
+		private RectTransform m_verticalMarker;
+		
+		[Space]
+		
+		[SerializeField]
 		private UILegend m_legend;
 		
 		[SerializeField]
@@ -25,9 +33,6 @@ namespace Graphs.Implementations
 		[SerializeField]
 		private UIGraphScale m_verticalScale;
 		
-		[SerializeField]
-		private TMP_Text m_title;
-
 		[SerializeField]
 		private UIValuesTooltip m_valuesTooltip;
 
@@ -41,61 +46,90 @@ namespace Graphs.Implementations
 		private bool m_scaleChanged;
 		
 		private RectTransform m_rectTransform;
-		private Texture2D m_texture;
 
+		private int m_textureWidth;
+		private int m_textureHeight;
+
+		private int m_currentTextureIndex;
+		private Texture2D[] m_textures = new Texture2D[2];
+		
 		private bool m_scaleSyncEnabled;
 		private float m_minScaleSync = int.MaxValue;
 		private float m_maxScaleSync = int.MinValue;
 		
 		private float m_verticalDensity;
-		
+		private float m_horizontalDensity;
+
+		private Color m_clearColor;
 		private Color[] m_clearColorArray;
 		
 		private Rect m_screenRect;
 		private Rect m_textureRect;
+		private Vector3 m_verticalMarkerPosition;
 
+		private int m_updateCount = 0;
+		
+		public string title { get; private set; }
+		
 		private void Awake()
 		{
 			m_scaleChanged = true;
 			m_rectTransform = transform as RectTransform;
+
+			m_verticalMarkerPosition = m_textureTarget.transform.position;
 			
 			m_screenRect = GetScreenRect(m_rectTransform);
 			m_textureRect = GetScreenRect(m_textureTarget.rectTransform);
-			
-			m_texture = CreateTexture();
-			m_clearColorArray = new Color[m_texture.width * m_texture.height];
+
+			m_textures[0] = CreateTexture();
+			m_textures[1] = CreateTexture();
+
+			m_textureWidth = m_textures[0].width;
+			m_textureHeight = m_textures[0].height;
+
+			m_horizontalDensity = m_textureWidth / m_textureRect.width;
+			m_verticalDensity = m_textureHeight / (m_maxScaleSync - m_minScaleSync);
+
+			m_clearColor = new Color(.3f, .3f, .3f, .8f);
+			m_clearColorArray = new Color[m_textureWidth * m_textureHeight];
 			for (var i = 0; i < m_clearColorArray.Length; i++)
 			{
-				m_clearColorArray[i] = new Color(.3f, .3f, .3f, .8f);
+				m_clearColorArray[i] = m_clearColor;
 			}
 			
-			ClearTexture();
+			ClearTextures();
 			
-			m_textureTarget.texture = m_texture;
+			m_textureTarget.texture = m_textures[0];
+		}
+
+		private void ClearTextures()
+		{
+			m_textures[0].SetPixels(m_clearColorArray);
+			m_textures[1].SetPixels(m_clearColorArray);
+			
+			m_textures[0].Apply();
+			m_textures[1].Apply();
 		}
 
 		private void OnDestroy()
 		{
-			Destroy(m_texture);
+			Destroy(m_textures[0]);
+			Destroy(m_textures[1]);
 		}
-
-		public string title { get; private set; }
-
-		public IDisposable AddGraph(IGraph graph)
+		
+		public void AddGraph(IGraph graph)
 		{
 			if (m_graphs.Contains(graph))
 			{
-				return null;
+				return;
 			}
 
-			graph.SetDimensions(m_capacity, m_texture.height);
+			graph.SetDimensions(m_capacity, m_textureHeight);
 			
 			m_graphs.Add(graph);
 			m_legend.AddEntryForGraph(graph);
 			m_valuesTooltip.AddTextForGraph(graph);
 			m_verticalScale.AddScaleTextForGraph(graph);
-
-			return new DisposableAction(() => RemoveGraph(graph));
 		}
 
 		public void SetSyncMode(bool syncEnabled)
@@ -140,7 +174,7 @@ namespace Graphs.Implementations
 			return this;
 		}
 
-		private void RemoveGraph(IGraph graph)
+		public void RemoveGraph(IGraph graph)
 		{
 			if (!m_graphs.Contains(graph))
 			{
@@ -200,8 +234,59 @@ namespace Graphs.Implementations
 
 		private void LateUpdate()
 		{
-			ClearTexture();
+			if (m_graphs.Count == 0)
+			{
+				return;
+			}
+
+			HandleTooltip();
+
+			if (m_graphsPaused)
+			{
+				return;
+			}
+
+			var currentTexture = m_textures[m_currentTextureIndex];
+			m_currentTextureIndex = m_currentTextureIndex == 0 ? 1 : 0;
+
+			var nextTexture = m_textures[m_currentTextureIndex];
 			
+			UpdateGraphs();
+
+			var needsRedraw = false;
+
+			foreach (var graph in m_graphs)
+			{
+				if (graph.needsRedraw)
+				{
+					needsRedraw = true;
+					break;
+				}
+			}
+			
+			PrepareTextures(currentTexture, needsRedraw);
+			PopulateTexture(currentTexture, needsRedraw);
+			
+			if (m_scaleChanged && m_scaleSyncEnabled)
+			{
+				UpdateMarkersPositions();
+			}
+			
+			UpdateScaleUI();
+			
+			currentTexture.Apply();
+
+			if (needsRedraw)
+			{
+				CopyOldValues(currentTexture, nextTexture, 0);
+			}
+
+			m_scaleChanged = false;
+			m_updateCount++;
+		}
+
+		private void HandleTooltip()
+		{
 			if (MouseInsideGroup())
 			{
 				if (Input.GetMouseButtonDown(0))
@@ -218,18 +303,42 @@ namespace Graphs.Implementations
 			{
 				HideValuesPopup();
 			}
+		}
 
-			UpdateGraphs();
-			
-			if (m_scaleChanged && m_scaleSyncEnabled)
+		private void PrepareTextures(Texture2D currentTexture, bool needsRedraw)
+		{
+			if (needsRedraw)
 			{
-				UpdateMarkersPositions();
-				m_scaleChanged = false;
+				ClearTextures();
+				return;
 			}
+
+			if (m_updateCount > m_textureWidth)
+			{
+				CopyOldValues(m_textures[m_currentTextureIndex], currentTexture, 1);
+				ClearLastColumn(currentTexture);
+			}
+			else
+			{
+				CopyOldValues(m_textures[m_currentTextureIndex], currentTexture, 0);
+			}
+
+		}
+
+		private void CopyOldValues(Texture source, Texture destination, int startIndex)
+		{
+			Graphics.CopyTexture(source, 0, 0, startIndex, 0, 
+				source.width - 1, source.height, destination, 0, 0, 0, 0);
+		}
+
+		private void ClearLastColumn(Texture2D texture)
+		{
+			var xPos = m_textureWidth - 1;
 			
-			UpdateScaleUI();
-			
-			m_texture.Apply();
+			for (var i = 0; i < texture.height; i++)
+			{
+				texture.SetPixel(xPos, i, m_clearColor);
+			}
 		}
 
 		private void UpdateScaleUI()
@@ -245,11 +354,10 @@ namespace Graphs.Implementations
 			foreach (var marker in m_markers)
 			{
 				var offsetFromMinimum = marker.value - m_minScaleSync;
-				var verticalDensity = m_texture.height / (m_maxScaleSync - m_minScaleSync);
 				
-				var texturePosition = Mathf.FloorToInt(offsetFromMinimum * verticalDensity);
+				var texturePosition = Mathf.FloorToInt(offsetFromMinimum * m_verticalDensity);
 
-				if (texturePosition > m_texture.height)
+				if (texturePosition > m_textureHeight)
 				{
 					marker.markerInstance.gameObject.SetActive(false);
 					continue;
@@ -277,8 +385,20 @@ namespace Graphs.Implementations
 				{
 					TryUpdateScaleFrom(graph);
 				}
-				
-				graph.Populate(m_texture);
+			}
+		}
+
+		private void PopulateTexture(Texture2D currentTexture, bool needsRedraw)
+		{
+			foreach (var graph in m_graphs)
+			{
+				if (needsRedraw)
+				{
+					graph.Redraw(currentTexture);
+					continue;
+				}
+
+				graph.Populate(currentTexture);
 			}
 		}
 
@@ -320,15 +440,8 @@ namespace Graphs.Implementations
 		private void ShowValuesTooltip()
 		{
 			var mousePosition = (Vector2) Input.mousePosition;
-			var horizontalDensity = m_texture.width / m_textureRect.width;
+			var selectedPixel = (int) ((mousePosition.x - m_textureRect.x) * m_horizontalDensity);
 			
-			var selectedPixel = (int) ((mousePosition.x - m_textureRect.x) * horizontalDensity);
-
-			for (var i = 0; i < m_texture.height; i++)
-			{
-				m_texture.SetPixel(selectedPixel, i, Color.white);
-			}
-
 			foreach (var graph in m_graphs)
 			{
 				m_valuesTooltip.SetTextForGraph(graph, graph.GetValueAt(selectedPixel));
@@ -339,7 +452,15 @@ namespace Graphs.Implementations
 				m_valuesTooltip.gameObject.SetActive(true);
 			}
 
+			if (!m_verticalMarker.gameObject.activeSelf)
+			{
+				m_verticalMarker.gameObject.SetActive(true);
+			}
+
+			m_verticalMarkerPosition.x = mousePosition.x;
+			
 			m_valuesTooltip.transform.position = mousePosition + m_tooltipOffset;
+			m_verticalMarker.transform.position = m_verticalMarkerPosition;
 		}
 
 		private void HideValuesPopup()
@@ -348,19 +469,20 @@ namespace Graphs.Implementations
 			{
 				m_valuesTooltip.gameObject.SetActive(false);
 			}
+
+			if (m_verticalMarker.gameObject.activeSelf)
+			{
+				m_verticalMarker.gameObject.SetActive(false);
+			}
 		}
 		
 		private Texture2D CreateTexture()
 		{
-			if (m_texture != null)
-			{
-				return m_texture;
-			}
-
 			var rect = GetScreenRect(m_textureTarget.rectTransform);
 			var texture = new Texture2D(m_capacity, (int) rect.height);
 
-			texture.filterMode = FilterMode.Point;
+			texture.filterMode = FilterMode.Bilinear;
+			
 			return texture;
 		}
 
@@ -376,12 +498,6 @@ namespace Graphs.Implementations
 			var height = topRight.y - bottomLeft.y;
 
 			return new Rect(bottomLeft.x, bottomLeft.y, width, height);
-		}
-		
-		private void ClearTexture()
-		{
-			m_texture.SetPixels(m_clearColorArray);
-			m_texture.Apply();
 		}
 		
 		private struct MarkerSettings
